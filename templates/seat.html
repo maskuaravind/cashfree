@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Seat Booking</title>
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      background: #f4f4f4;
+    }
+    h1 {
+      text-align: center;
+    }
+    .seats-container {
+      display: grid;
+      grid-template-columns: repeat(5, 60px);
+      gap: 10px;
+      justify-content: center;
+      margin-bottom: 20px;
+    }
+    .seat {
+      width: 60px;
+      height: 60px;
+      background-color: #ddd;
+      border-radius: 8px;
+      text-align: center;
+      line-height: 60px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: 0.3s;
+    }
+    .seat.selected {
+      background-color: #4CAF50;
+      color: white;
+    }
+    .seat.occupied {
+      background-color: #888;
+      cursor: not-allowed;
+    }
+    .summary {
+      text-align: center;
+      margin-top: 20px;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 16px;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    button:disabled {
+      background-color: #aaa;
+      cursor: not-allowed;
+    }
+  </style>
+</head>
+<body>
+
+<h1>Seat Booking</h1>
+<div class="seats-container" id="seats-container"></div>
+
+<div class="summary">
+  <p>Selected Seats: <span id="selected-count">0</span></p>
+  <p>Remaining Seats: <span id="remaining-count">30</span></p>
+  <p>Total Price: ₹<span id="total-price">0</span></p>
+  <button id="pay-button" disabled>Pay Now</button>
+</div>
+
+<script>
+  const seatCount = 30;
+  const seatPrice = 100;
+  const bookedSeats = {{ booked_seats | tojson }};
+
+  const seatContainer = document.getElementById('seats-container');
+  const selectedCountEl = document.getElementById('selected-count');
+  const remainingCountEl = document.getElementById('remaining-count');
+  const totalPriceEl = document.getElementById('total-price');
+  const payButton = document.getElementById('pay-button');
+
+  let selectedSeats = new Set();
+
+  function updateSummary() {
+    selectedCountEl.textContent = selectedSeats.size;
+    remainingCountEl.textContent = seatCount - bookedSeats.length - selectedSeats.size;
+    totalPriceEl.textContent = selectedSeats.size * seatPrice;
+    payButton.disabled = selectedSeats.size === 0;
+  }
+
+  function createSeats() {
+    for (let i = 1; i <= seatCount; i++) {
+      const seat = document.createElement('div');
+      seat.classList.add('seat');
+      seat.textContent = i;
+      seat.dataset.seatId = i;
+
+      if (bookedSeats.includes(i)) {
+        seat.classList.add('occupied');
+      } else {
+        seat.addEventListener('click', () => {
+          if (selectedSeats.has(i)) {
+            selectedSeats.delete(i);
+            seat.classList.remove('selected');
+          } else {
+            selectedSeats.add(i);
+            seat.classList.add('selected');
+          }
+          updateSummary();
+        });
+      }
+
+      seatContainer.appendChild(seat);
+    }
+  }
+
+  payButton.addEventListener('click', async () => {
+    const totalAmount = selectedSeats.size * seatPrice;
+
+    const res = await fetch('/create_order', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ amount: totalAmount, seats: Array.from(selectedSeats) })
+    });
+
+    const data = await res.json();
+
+    const options = {
+      key: "{{ razorpay_key }}",
+      amount: totalAmount * 100,
+      currency: "INR",
+      name: "Seat Booking",
+      description: "Booking Confirmation",
+      order_id: data.order_id,
+      prefill: {
+        name: "Test User",
+        email: "test@example.com",
+        contact: "9999999999"
+      },
+      method: {
+        upi: true,
+        card: true,
+        netbanking: true,
+        wallet: true
+      },
+      handler: function (response) {
+        fetch('/payment_success', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            razorpay_payment_id: response.razorpay_payment_id,
+            razorpay_order_id: response.razorpay_order_id,
+            razorpay_signature: response.razorpay_signature,
+            seats: Array.from(selectedSeats)
+          })
+        }).then(res => {
+          if (res.ok) window.location.href = '/ticket';
+          else alert("Payment verification failed!");
+        });
+      },
+      theme: { color: "#3399cc" }
+    };
+
+    const rzp = new Razorpay(options);
+    rzp.open();
+  });
+
+  createSeats();
+  updateSummary();
+</script>
+
+</body>
+</html>
