@@ -130,9 +130,9 @@
 
       const data = await res.json();
 
-      if (res.ok && data.payment_link) {
-        console.log("Redirecting to:", data.payment_link);
-        window.location.href=data.payment_link;
+      if (res.ok && data.payments && data.payments.url) {
+        console.log("Redirecting to:", data.payments.url);
+        window.location.href=data.payments.url;
       } else {
         alert("Payment failed: " + (data.error || "Unknown error"));
       }
