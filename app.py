@@ -61,7 +61,7 @@ def create_order():
 
         if response.status_code == 200:
             res_data = response.json()
-            payment_link = res_data.get("payment_link")
+            payment_link = res_data.get("payments", {}).get("url")
             if payment_link:
                 return jsonify(payment_link=payment_link)
             else:
