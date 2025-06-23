@@ -7,9 +7,12 @@ import os
 app = Flask(__name__)
 
 # Cashfree credentials
-CASHFREE_APP_ID = os.getenv("CASHFREE_APP_ID")
-CASHFREE_SECRET_KEY = os.getenv("CASHFREE_SECRET_KEY")
+CASHFREE_APP_ID =os.environ.get("CASHFREE_APP_ID")
+CASHFREE_SECRET_KEY =os.environ.get("CASHFREE_SECRET_KEY")
 CASHFREE_BASE_URL = "https://api.cashfree.com/pg"
+print("CASHFREE_APP_ID:", CASHFREE_APP_ID)
+print("CASHFREE_SECRET_KEY:", CASHFREE_SECRET_KEY)
+
 
 booked_seats = []
 
@@ -19,6 +22,7 @@ def home():
 
 @app.route('/create_order', methods=['POST'])
 def create_order():
+    print("create_order route hit")
     try:
         # Accept JSON or form input
         data = request.get_json(force=True) or request.form
@@ -47,7 +51,7 @@ def create_order():
                 "customer_phone": "9999999999"
             },
             "order_meta": {
-                "return_url": f"http://{request.host}/payment_success?order_id={order_id}"
+                "return_url": f"https://cash-1rwc.onrender.com/payment_success?order_id={order_id}"
             }
         }
 
