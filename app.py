@@ -2,12 +2,13 @@ from flask import Flask, render_template, request, jsonify
 import requests
 import json
 import time
+import os
 
 app = Flask(__name__)
 
 # Cashfree credentials (LIVE keys)
-CASHFREE_APP_ID = "TEST10666540f5007316480c6a46b6f404566601"
-CASHFREE_SECRET_KEY = "cfsk_ma_test_57e0cbd4b9e148da4cbd007b59336dc8_c9b8cc84"
+CASHFREE_APP_ID = os.getenv("CASHFREE_APP_ID")
+CASHFREE_SECRET_KEY = os.getenv("CASHFREE_SECRET_KEY")
 CASHFREE_BASE_URL = "https://sandbox.cashfree.com/pg"
 
 booked_seats = []
