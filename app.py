@@ -39,7 +39,7 @@ def create_order():
             "customer_phone": "9999999999"
         },
         "order_meta": {
-            "return_url": "https://fair-chicken-battle.loca.lt/payment_success?order_id={order_id}"
+            "return_url": "http://127.0.0.1:5000/payment_success?order_id={order_id}"
         }
     }
 
