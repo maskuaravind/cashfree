@@ -25,6 +25,7 @@ def create_order():
         print("Incoming create_order data:", data)
 
         amount = data.get('amount')
+        seats = data.get('seats', [])
         if not amount:
             return jsonify({"error": "Missing amount"}), 400
 

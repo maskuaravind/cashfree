@@ -117,18 +117,23 @@
 
   payButton.addEventListener('click', async () => {
     const totalAmount = selectedSeats.size * seatPrice;
+    try {
+      const res = await fetch('/create_order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount: totalAmount, seats: Array.from(selectedSeats) })
+      });
 
-    const res = await fetch('/create_order', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ amount: totalAmount, seats: Array.from(selectedSeats) })
-    });
+      const data = await res.json();
 
-    const data = await res.json();
-    if (data.payment_link) {
-      window.open(data.payment_link,'_blank');
-    } else {
-      alert("Failed to create payment. Please try again.");
+      if (res.ok && data.payment_link) {
+        window.open(data.payment_link,'_blank');
+      } else {
+        alert("Payment failed: " + (data.error || "Unknown error"));
+      }
+    } catch (err){
+      console.error("Network error:", err);
+      alert("Network error. Please try again.");
     }
   });
 
