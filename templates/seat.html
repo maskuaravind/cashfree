@@ -3,7 +3,6 @@
 <head>
   <meta charset="UTF-8">
   <title>Seat Booking</title>
-  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -126,45 +125,11 @@
     });
 
     const data = await res.json();
-
-    const options = {
-      key: "{{ razorpay_key }}",
-      amount: totalAmount * 100,
-      currency: "INR",
-      name: "Seat Booking",
-      description: "Booking Confirmation",
-      order_id: data.order_id,
-      prefill: {
-        name: "Test User",
-        email: "test@example.com",
-        contact: "9999999999"
-      },
-      method: {
-        upi: true,
-        card: true,
-        netbanking: true,
-        wallet: true
-      },
-      handler: function (response) {
-        fetch('/payment_success', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            razorpay_payment_id: response.razorpay_payment_id,
-            razorpay_order_id: response.razorpay_order_id,
-            razorpay_signature: response.razorpay_signature,
-            seats: Array.from(selectedSeats)
-          })
-        }).then(res => {
-          if (res.ok) window.location.href = '/ticket';
-          else alert("Payment verification failed!");
-        });
-      },
-      theme: { color: "#3399cc" }
-    };
-
-    const rzp = new Razorpay(options);
-    rzp.open();
+    if (data.payment_link) {
+      window.open(data.payment_link,'_blank');
+    } else {
+      alert("Failed to create payment. Please try again.");
+    }
   });
 
   createSeats();
