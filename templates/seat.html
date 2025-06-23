@@ -117,6 +117,9 @@
 
   payButton.addEventListener('click', async () => {
     const totalAmount = selectedSeats.size * seatPrice;
+    const selectedArray = Array.from(selectedSeats);
+    console.log("Clicked Pay. Selected Seats:", selectedArray);
+    console.log("Total Amount:", totalAmount);
     try {
       const res = await fetch('/create_order', {
         method: 'POST',
