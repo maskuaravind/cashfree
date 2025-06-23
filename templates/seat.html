@@ -11,6 +11,7 @@
     }
     h1 {
       text-align: center;
+      color: #333;
     }
     .seats-container {
       display: grid;
@@ -29,67 +30,141 @@
       cursor: pointer;
       font-weight: bold;
       transition: 0.3s;
+      border: 2px solid transparent;
+    }
+    .seat:hover:not(.occupied) {
+      background-color: #bbb;
     }
     .seat.selected {
       background-color: #4CAF50;
       color: white;
+      border-color: #45a049;
     }
     .seat.occupied {
-      background-color: #888;
+      background-color: #ff6b6b;
+      color: white;
       cursor: not-allowed;
     }
     .summary {
       text-align: center;
       margin-top: 20px;
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .summary p {
+      margin: 10px 0;
+      font-size: 16px;
     }
     button {
-      padding: 10px 20px;
+      padding: 12px 24px;
       font-size: 16px;
       background-color: #007bff;
       color: white;
       border: none;
       border-radius: 6px;
       cursor: pointer;
+      transition: background-color 0.3s;
+    }
+    button:hover:not(:disabled) {
+      background-color: #0056b3;
     }
     button:disabled {
       background-color: #aaa;
       cursor: not-allowed;
     }
+    .legend {
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+      margin-bottom: 20px;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .legend-color {
+      width: 20px;
+      height: 20px;
+      border-radius: 4px;
+    }
+    .loading {
+      display: none;
+      text-align: center;
+      margin-top: 10px;
+    }
+    .error {
+      color: #dc3545;
+      text-align: center;
+      margin-top: 10px;
+    }
   </style>
 </head>
 <body>
 
-<h1>Seat Booking</h1>
+<h1>Seat Booking System</h1>
+
+<div class="legend">
+  <div class="legend-item">
+    <div class="legend-color" style="background-color: #ddd;"></div>
+    <span>Available</span>
+  </div>
+  <div class="legend-item">
+    <div class="legend-color" style="background-color: #4CAF50;"></div>
+    <span>Selected</span>
+  </div>
+  <div class="legend-item">
+    <div class="legend-color" style="background-color: #ff6b6b;"></div>
+    <span>Booked</span>
+  </div>
+</div>
+
 <div class="seats-container" id="seats-container"></div>
 
 <div class="summary">
   <p>Selected Seats: <span id="selected-count">0</span></p>
-  <p>Remaining Seats: <span id="remaining-count">30</span></p>
+  <p>Available Seats: <span id="available-count">30</span></p>
   <p>Total Price: ₹<span id="total-price">0</span></p>
   <button id="pay-button" disabled>Pay Now</button>
+  <div class="loading" id="loading">Processing payment...</div>
+  <div class="error" id="error-message"></div>
 </div>
 
 <script>
   const seatCount = 30;
   const seatPrice = 100;
-  const bookedSeats = {{ booked_seats | tojson }};
+  let bookedSeats = {{ booked_seats | tojson }};
 
   const seatContainer = document.getElementById('seats-container');
   const selectedCountEl = document.getElementById('selected-count');
-  const remainingCountEl = document.getElementById('remaining-count');
+  const availableCountEl = document.getElementById('available-count');
   const totalPriceEl = document.getElementById('total-price');
   const payButton = document.getElementById('pay-button');
+  const loadingEl = document.getElementById('loading');
+  const errorEl = document.getElementById('error-message');
 
   let selectedSeats = new Set();
 
+  function showError(message) {
+    errorEl.textContent = message;
+    errorEl.style.display = 'block';
+    setTimeout(() => {
+      errorEl.style.display = 'none';
+    }, 5000);
+  }
+
   function updateSummary() {
     selectedCountEl.textContent = selectedSeats.size;
-    remainingCountEl.textContent = seatCount - bookedSeats.length - selectedSeats.size;
+    availableCountEl.textContent = seatCount - bookedSeats.length;
     totalPriceEl.textContent = selectedSeats.size * seatPrice;
     payButton.disabled = selectedSeats.size === 0;
   }
 
   function createSeats() {
+    seatContainer.innerHTML = ''; // Clear existing seats
+    
     for (let i = 1; i <= seatCount; i++) {
       const seat = document.createElement('div');
       seat.classList.add('seat');
@@ -98,6 +173,7 @@
 
       if (bookedSeats.includes(i)) {
         seat.classList.add('occupied');
+        seat.title = 'This seat is already booked';
       } else {
         seat.addEventListener('click', () => {
           if (selectedSeats.has(i)) {
@@ -109,42 +185,44 @@
           }
           updateSummary();
         });
+        seat.title = 'Click to select this seat';
       }
 
       seatContainer.appendChild(seat);
     }
   }
 
+  async function refreshBookedSeats() {
+    try {
+      const response = await fetch('/get_booked_seats');
+      const data = await response.json();
+      bookedSeats = data.booked_seats || [];
+      
+      // Remove any selected seats that are now booked
+      selectedSeats.forEach(seat => {
+        if (bookedSeats.includes(seat)) {
+          selectedSeats.delete(seat);
+        }
+      });
+      
+      createSeats();
+      updateSummary();
+    } catch (error) {
+      console.error('Error refreshing booked seats:', error);
+    }
+  }
+
   payButton.addEventListener('click', async () => {
     const totalAmount = selectedSeats.size * seatPrice;
     const selectedArray = Array.from(selectedSeats);
+    
     console.log("Clicked Pay. Selected Seats:", selectedArray);
     console.log("Total Amount:", totalAmount);
     
-    try
-    {
-      const res = await fetch('/create_order', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ amount: totalAmount, seats: selectedArray })
-      });
-      const data = await res.json();
-
-      if (res.ok && data.checkout_link) {
-         window.location.href = data.checkout_link;
-      } else {
-        alert("Payment initiation failed");
-      }
-
-    } catch (err){
-      console.error("Network error:", err);
-      alert("Network error. Please try again.");
+    if (selectedArray.length === 0) {
+      showError("Please select at least one seat");
+      return;
     }
-  });
 
-  createSeats();
-  updateSummary();
-</script>
-
-</body>
-</html>
+    // Show loading state
+    payButton.
