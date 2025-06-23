@@ -32,7 +32,7 @@ def create_order():
         seats = data.get('seats', [])
         if not amount:
             return jsonify({"error": "Missing amount"}), 400
-
+        url = "https://sandbox.cashfree.com/pg/orders"
         headers = {
             "x-client-id": CASHFREE_APP_ID,
             "x-client-secret": CASHFREE_SECRET_KEY,
@@ -55,7 +55,7 @@ def create_order():
             }
         }
 
-        response = requests.post(f"{CASHFREE_BASE_URL}/orders", headers=headers, data=json.dumps(payload))
+        response = requests.post(url, headers=headers, data=json.dumps(payload))
         print("Response code:", response.status_code)
         print("Response body:", response.text)
 
