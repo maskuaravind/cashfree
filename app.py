@@ -6,7 +6,7 @@ import os
 
 app = Flask(__name__)
 
-# Cashfree credentials (LIVE keys)
+# Cashfree credentials
 CASHFREE_APP_ID = os.getenv("CASHFREE_APP_ID")
 CASHFREE_SECRET_KEY = os.getenv("CASHFREE_SECRET_KEY")
 CASHFREE_BASE_URL = "https://sandbox.cashfree.com/pg"
@@ -19,31 +19,37 @@ def home():
 
 @app.route('/create_order', methods=['POST'])
 def create_order():
-    data = request.json
-    amount = data['amount']
-
-    headers = {
-        "x-client-id": CASHFREE_APP_ID,
-        "x-client-secret": CASHFREE_SECRET_KEY,
-        "x-api-version": "2022-09-01",
-        "Content-Type": "application/json"
-    }
-
-    payload = {
-        "order_amount": amount,
-        "order_currency": "INR",
-        "order_id": "order_" + str(request.remote_addr).replace('.', '_') + str(int(time.time())),
-        "customer_details": {
-            "customer_id": "cust_001",
-            "customer_email": "test@example.com",
-            "customer_phone": "9999999999"
-        },
-        "order_meta": {
-            "return_url": "http://127.0.0.1:5000/payment_success?order_id={order_id}"
-        }
-    }
-
     try:
+        # Accept JSON or form input
+        data = request.get_json(force=True) or request.form
+        print("Incoming create_order data:", data)
+
+        amount = data.get('amount')
+        if not amount:
+            return jsonify({"error": "Missing amount"}), 400
+
+        headers = {
+            "x-client-id": CASHFREE_APP_ID,
+            "x-client-secret": CASHFREE_SECRET_KEY,
+            "x-api-version": "2022-09-01",
+            "Content-Type": "application/json"
+        }
+
+        order_id = "order_" + str(request.remote_addr).replace('.', '_') + str(int(time.time()))
+        payload = {
+            "order_amount": amount,
+            "order_currency": "INR",
+            "order_id": order_id,
+            "customer_details": {
+                "customer_id": "cust_001",
+                "customer_email": "test@example.com",
+                "customer_phone": "9999999999"
+            },
+            "order_meta": {
+                "return_url": f"http://{request.host}/payment_success?order_id={order_id}"
+            }
+        }
+
         response = requests.post(f"{CASHFREE_BASE_URL}/orders", headers=headers, data=json.dumps(payload))
         print("Response code:", response.status_code)
         print("Response body:", response.text)
@@ -66,8 +72,7 @@ def create_order():
 @app.route('/payment_success')
 def payment_success():
     order_id = request.args.get("order_id")
-    # In real app: verify order status via Cashfree API
-    return "Payment successful! Booking confirmed."
+    return f"Payment successful! Booking confirmed for Order ID: {order_id}"
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
