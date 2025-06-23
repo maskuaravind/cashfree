@@ -61,9 +61,8 @@ def create_order():
 
         if response.status_code == 200:
             res_data = response.json()
-            session_id = res_data.get("payment_session_id")
-            if session_id:
-                payment_link = f"https://payments.cashfree.com/pg/checkout?payment_session_id={session_id}"
+            payment_link = res_data.get("payment_link")
+            if payment_link:
                 return jsonify(payment_link=payment_link)
             else:
                 return jsonify({"error": "No session_id returned from Cashfree"}), 400
