@@ -24,7 +24,6 @@ def home():
 def create_order():
     print("create_order route hit")
     try:
-        # Accept JSON or form input
         data = request.get_json(force=True) or request.form
         print("Incoming create_order data:", data)
 
@@ -32,7 +31,8 @@ def create_order():
         seats = data.get('seats', [])
         if not amount:
             return jsonify({"error": "Missing amount"}), 400
-        url = "https://sandbox.cashfree.com/pg/orders"
+
+        url = f"{CASHFREE_BASE_URL}/orders"
         headers = {
             "x-client-id": CASHFREE_APP_ID,
             "x-client-secret": CASHFREE_SECRET_KEY,
@@ -55,24 +55,24 @@ def create_order():
             }
         }
 
-        response = requests.post(url, headers=headers, data=json.dumps(payload))
+        response = requests.post(url, headers=headers, json=payload)
         print("Response code:", response.status_code)
         print("Response body:", response.text)
 
         if response.status_code == 200:
             res_data = response.json()
-            payment_link = res_data.get("payments", {}).get("url")
-            if payment_link:
-                return jsonify(payment_link=payment_link)
+            session_id = res_data.get("payment_session_id")
+            if session_id:
+                checkout_link = f"https://sandbox.cashfree.com/pg/checkout?payment_session_id={session_id}"
+                return jsonify({"checkout_link": checkout_link})
             else:
-                return jsonify({"error": "No session_id returned from Cashfree"}), 400
+                return jsonify({"error": "No payment_session_id returned"}), 400
         else:
-            return jsonify({"error": "Cashfree order creation failed"}), 400
+            return jsonify({"error": "Cashfree order creation failed", "details": response.text}), 400
 
     except Exception as e:
         print("Exception:", str(e))
         return jsonify({"error": "Internal server error"}), 500
-
 @app.route('/payment_success')
 def payment_success():
     order_id = request.args.get("order_id")

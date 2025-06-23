@@ -121,21 +121,21 @@
     console.log("Clicked Pay. Selected Seats:", selectedArray);
     console.log("Total Amount:", totalAmount);
     
-    try {
+    try
+    {
       const res = await fetch('/create_order', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount: totalAmount, seats: Array.from(selectedSeats) })
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ amount: totalAmount, seats: selectedArray })
       });
-
       const data = await res.json();
 
-      if (res.ok && data.payment_link) {
-        console.log("Redirecting to:", data.payment_link);
-        window.location.href=data.payment_link;
+      if (res.ok && data.checkout_link) {
+         window.location.href = data.checkout_link;
       } else {
-        alert("Payment failed: " + (data.error || "Unknown error"));
+        alert("Payment initiation failed");
       }
+
     } catch (err){
       console.error("Network error:", err);
       alert("Network error. Please try again.");
