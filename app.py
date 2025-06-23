@@ -9,7 +9,7 @@ app = Flask(__name__)
 # Cashfree credentials
 CASHFREE_APP_ID =os.environ.get("CASHFREE_APP_ID")
 CASHFREE_SECRET_KEY =os.environ.get("CASHFREE_SECRET_KEY")
-CASHFREE_BASE_URL = "https://api.cashfree.com/pg"
+CASHFREE_BASE_URL = "https://sandbox.cashfree.com/pg"
 print("CASHFREE_APP_ID:", CASHFREE_APP_ID)
 print("CASHFREE_SECRET_KEY:", CASHFREE_SECRET_KEY)
 
