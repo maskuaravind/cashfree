@@ -54,7 +54,7 @@ def pay():
     },
         "link_meta": {
             "return_url": f"http://127.0.0.1:5000/callback?order_id={order_id}",
-            "upi_intent": False
+            "upi_intent": True
         }
     }
 
