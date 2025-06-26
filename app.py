@@ -1,182 +1,101 @@
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, redirect
 import requests
-import json
-import time
-import os
 import uuid
+#import os
+#from dotenv import load_dotenv
 
 app = Flask(__name__)
 
-# Cashfree credentials
-CASHFREE_APP_ID = os.environ.get("CASHFREE_APP_ID")
-CASHFREE_SECRET_KEY = os.environ.get("CASHFREE_SECRET_KEY")
-CASHFREE_BASE_URL = "https://sandbox.cashfree.com/pg"
+# Cashfree test credentials
+APP_ID = "TEST10666540f5007316480c6a46b6f404566601"
+SECRET_KEY = "cfsk_ma_test_9bea185d75db4d0bceaa0cce549f021e_5356019f"
+CASHFREE_API_URL = 'https://sandbox.cashfree.com/pg/links'
 
-print("CASHFREE_APP_ID:", CASHFREE_APP_ID)
-print("CASHFREE_SECRET_KEY:", CASHFREE_SECRET_KEY[:10] + "..." if CASHFREE_SECRET_KEY else None)
+SUPABASE_URL = "https://fqupeaniwcakcyklmykb.supabase.co"
+SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZxdXBlYW5pd2Nha2N5a2xteWtiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA5NDIxNzIsImV4cCI6MjA2NjUxODE3Mn0.5vdhoQRX2OEWM-CrXvR3sLrQJiIF8vMBscKGMp70rOo"
 
-# In-memory storage for booked seats (use database in production)
-booked_seats = []
+headers = {
+        "x-api-version": "2022-09-01",
+        "x-client-id": APP_ID,
+        "x-client-secret": SECRET_KEY,
+        "Content-Type": "application/json"
+    }
 
 @app.route('/')
 def home():
-    return render_template('seat.html', booked_seats=booked_seats)
+    return render_template('seat.html')
 
-@app.route('/create_order', methods=['POST'])
-def create_order():
-    print("create_order route hit")
-    try:
-        data = request.get_json(force=True) or request.form
-        print("Incoming create_order data:", data)
-
-        amount = data.get('amount')
-        seats = data.get('seats', [])
-        
-        if not amount:
-            return jsonify({"error": "Missing amount"}), 400
-        
-        if not seats:
-            return jsonify({"error": "No seats selected"}), 400
-
-        # Check if any selected seats are already booked
-        conflicting_seats = [seat for seat in seats if seat in booked_seats]
-        if conflicting_seats:
-            return jsonify({"error": f"Seats {conflicting_seats} are already booked"}), 400
-
-        url = f"{CASHFREE_BASE_URL}/orders"
-        headers = {
-            "x-client-id": CASHFREE_APP_ID,
-            "x-client-secret": CASHFREE_SECRET_KEY,
-            "x-api-version": "2025-01-01",  # Updated to latest version
-            "Content-Type": "application/json"
-        }
-
-        # Generate unique order_id
-        order_id = "order_" + str(uuid.uuid4()).replace('-', '_')[:20]
-        
-        payload = {
-            "order_id": order_id,  # Added required order_id
-            "order_amount": float(amount),
-            "order_currency": "INR",
-            "customer_details": {
-                "customer_id": "cust_" + str(int(time.time())),
-                "customer_email": "test@example.com",
-                "customer_phone": "9999999999"
-            },
-            "order_meta": {
-                "return_url": f"https://cash-1rwc.onrender.com/payment_success?order_id={order_id}&seats={','.join(map(str, seats))}"
-            },
-            "order_note": f"Seat booking for seats: {', '.join(map(str, seats))}"
-        }
-
-        response = requests.post(url, headers=headers, json=payload)
-        print("Response code:", response.status_code)
-        print("Response body:", response.text)
-
-        if response.status_code == 200:
-            res_data = response.json()
-            payment_session_id = res_data.get("payment_session_id")
-            if payment_session_id:
-                checkout_link = f"https://sandbox.cashfree.com/pg/checkout?payment_session_id={payment_session_id}"
-                return jsonify({
-                    "checkout_link": checkout_link,
-                    "order_id": order_id,
-                    "payment_session_id": payment_session_id
-                })
-            else:
-                return jsonify({"error": "No payment_session_id returned"}), 400
-        else:
-            error_data = response.json() if response.content else {}
-            return jsonify({
-                "error": "Cashfree order creation failed", 
-                "details": error_data.get("message", response.text)
-            }), 400
-
-    except Exception as e:
-        print("Exception:", str(e))
-        return jsonify({"error": "Internal server error", "details": str(e)}), 500
-
-@app.route('/payment_success')
-def payment_success():
-    order_id = request.args.get("order_id")
-    seats_param = request.args.get("seats")
+@app.route('/pay', methods=['POST'])
+def pay():
+    #name = request.form['name']
+    #email = request.form['email']
+    #phone = request.form['phone']
+    name="Arya"
+    email='maskuaravind29@gmail.com'
+    phone='8179326983'
+    amount = request.form.get('total_amount')
     
-    if not order_id:
-        return "Error: Missing order ID", 400
+    order_id = str(uuid.uuid4())[:8]  # unique id
     
-    # Verify payment status with Cashfree
-    try:
-        url = f"{CASHFREE_BASE_URL}/orders/{order_id}"
-        headers = {
-            "x-client-id": CASHFREE_APP_ID,
-            "x-client-secret": CASHFREE_SECRET_KEY,
-            "x-api-version": "2025-01-01"
+    payload = {
+        "customer_details": {
+            "customer_id": name,
+            "customer_email": email,
+            "customer_phone": phone
+        },
+        "link_id": order_id,
+        "link_amount": float(amount),
+        "link_currency": "INR",
+        "link_note": "Test Payment",
+        "link_purpose": "Product Purchase",
+        "link_notify": {
+        "send_sms": True,
+        "send_email": False
+    },
+        "link_meta": {
+            "return_url": f"http://127.0.0.1:5000/callback?order_id={order_id}",
+            "upi_intent": False
         }
-        
-        response = requests.get(url, headers=headers)
-        
-        if response.status_code == 200:
-            order_data = response.json()
-            order_status = order_data.get("order_status")
-            
-            if order_status == "PAID":
-                # Payment successful, book the seats
-                if seats_param:
-                    seats = [int(seat) for seat in seats_param.split(',')]
-                    # Add seats to booked_seats (avoid duplicates)
-                    for seat in seats:
-                        if seat not in booked_seats:
-                            booked_seats.append(seat)
-                    
-                    return f"""
-                    <html>
-                    <head><title>Payment Successful</title></head>
-                    <body>
-                        <h1>Payment Successful!</h1>
-                        <p>Booking confirmed for Order ID: {order_id}</p>
-                        <p>Seats booked: {', '.join(map(str, seats))}</p>
-                        <p>Total amount: ₹{order_data.get('order_amount', 'N/A')}</p>
-                        <a href="/">Book more seats</a>
-                    </body>
-                    </html>
-                    """
-                else:
-                    return f"Payment successful! Booking confirmed for Order ID: {order_id}"
-            else:
-                return f"Payment not completed. Order status: {order_status}. Please try again."
-        else:
-            return f"Error verifying payment status. Please contact support with Order ID: {order_id}"
-            
-    except Exception as e:
-        print(f"Error verifying payment: {e}")
-        return f"Error verifying payment. Please contact support with Order ID: {order_id}"
+    }
 
-@app.route('/check_order_status/<order_id>')
-def check_order_status(order_id):
-    """API endpoint to check order status"""
+    
+
+    response = requests.post(CASHFREE_API_URL, json=payload, headers=headers)
+    print("Status Code:", response.status_code)
+    print("Response Text:", response.text)
+
     try:
-        url = f"{CASHFREE_BASE_URL}/orders/{order_id}"
-        headers = {
-            "x-client-id": CASHFREE_APP_ID,
-            "x-client-secret": CASHFREE_SECRET_KEY,
-            "x-api-version": "2025-01-01"
-        }
-        
-        response = requests.get(url, headers=headers)
-        
-        if response.status_code == 200:
-            return jsonify(response.json())
-        else:
-            return jsonify({"error": "Failed to fetch order status"}), 400
-            
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        response_data = response.json()
+        payment_link = response_data.get('payment_link') or response_data.get('link_url')
+        print("payment LINK",payment_link)
 
-@app.route('/get_booked_seats')
-def get_booked_seats():
-    """API endpoint to get currently booked seats"""
-    return jsonify({"booked_seats": booked_seats})
+        if payment_link:
+            return redirect(payment_link)
+        else:
+            return f"<h3>Failed to get payment link</h3><pre>{response_data}</pre>", 500
+    except Exception as e:
+        return f"<h3>Error processing payment link:</h3><pre>{str(e)}</pre>", 500
+
+
+
+@app.route('/callback')
+def callback():
+    #import requests
+    link_id = request.args.get('order_id')  # or 'link_id', depends on what you passed
+
+    status_url = f"https://sandbox.cashfree.com/pg/links/{link_id}"
+    response = requests.get(status_url, headers=headers)
+    data = response.json()
+
+    print("Payment Verification:", data)
+
+    payment_status = data.get("link_status")  # It will be PAID, UNPAID, etc.
+
+    if payment_status == "PAID":
+        return render_template('success.html')
+    else:
+        return render_template('fail.html')
+
 
 if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port, debug=True)
+    app.run(debug=True)

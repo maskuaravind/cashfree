@@ -2,227 +2,186 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Seat Booking</title>
+  <title>Seat Selection</title>
   <style>
+    :root {
+      --seat-size: 60px;
+      --seat-gap: 10px;
+      --primary-color: #4caf50;
+      --available-color: #ccc;
+      --pay-button-color: #2196f3;
+    }
+
     body {
       font-family: Arial, sans-serif;
-      padding: 20px;
       background: #f4f4f4;
-    }
-    h1 {
+      padding: 20px;
       text-align: center;
-      color: #333;
     }
-    .seats-container {
-      display: grid;
-      grid-template-columns: repeat(5, 60px);
-      gap: 10px;
-      justify-content: center;
+
+    h2 {
       margin-bottom: 20px;
     }
+
+    .seats-container {
+      display: grid;
+      grid-template-columns: repeat(4, var(--seat-size));
+      gap: var(--seat-gap);
+      justify-content: center;
+    }
+
     .seat {
-      width: 60px;
-      height: 60px;
-      background-color: #ddd;
-      border-radius: 8px;
-      text-align: center;
-      line-height: 60px;
-      cursor: pointer;
-      font-weight: bold;
-      transition: 0.3s;
-      border: 2px solid transparent;
+      position: relative;
     }
-    .seat:hover:not(.occupied) {
-      background-color: #bbb;
+
+    .seat input[type="checkbox"] {
+      display: none;
     }
-    .seat.selected {
-      background-color: #4CAF50;
-      color: white;
-      border-color: #45a049;
-    }
-    .seat.occupied {
-      background-color: #ff6b6b;
-      color: white;
-      cursor: not-allowed;
-    }
-    .summary {
-      text-align: center;
-      margin-top: 20px;
-      background: white;
-      padding: 20px;
-      border-radius: 8px;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-    .summary p {
-      margin: 10px 0;
-      font-size: 16px;
-    }
-    button {
-      padding: 12px 24px;
-      font-size: 16px;
-      background-color: #007bff;
-      color: white;
-      border: none;
-      border-radius: 6px;
+
+    .seat label {
+      display: block;
+      width: var(--seat-size);
+      height: var(--seat-size);
+      background-color: var(--available-color);
+      border-radius: 10px;
       cursor: pointer;
       transition: background-color 0.3s;
+      line-height: var(--seat-size);
+      text-align: center;
+      font-weight: bold;
     }
-    button:hover:not(:disabled) {
-      background-color: #0056b3;
+
+    .seat input[type="checkbox"]:checked + label {
+      background-color: var(--primary-color);
+      color: #fff;
     }
-    button:disabled {
-      background-color: #aaa;
-      cursor: not-allowed;
-    }
+
     .legend {
+      margin-top: 20px;
       display: flex;
       justify-content: center;
       gap: 20px;
-      margin-bottom: 20px;
     }
-    .legend-item {
-      display: flex;
-      align-items: center;
-      gap: 5px;
-    }
-    .legend-color {
+
+    .legend span {
+      display: inline-block;
       width: 20px;
       height: 20px;
-      border-radius: 4px;
+      border-radius: 5px;
+      margin-right: 5px;
     }
-    .loading {
-      display: none;
-      text-align: center;
-      margin-top: 10px;
+
+    .available { background-color: var(--available-color); }
+    .selected { background-color: var(--primary-color); }
+
+    .summary {
+      margin-top: 25px;
+      font-size: 18px;
+      font-weight: bold;
     }
-    .error {
-      color: #dc3545;
-      text-align: center;
-      margin-top: 10px;
+
+    .pay-button {
+      margin-top: 20px;
+    }
+
+    .pay-button button {
+      padding: 10px 25px;
+      font-size: 18px;
+      background-color: var(--pay-button-color);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: not-allowed;
+      transition: background-color 0.3s ease;
+    }
+
+    .pay-button button.enabled {
+      cursor: pointer;
+      background-color: #0b7dda;
     }
   </style>
 </head>
 <body>
 
-<h1>Seat Booking System</h1>
+  <h2>Select Your Seats</h2>
 
-<div class="legend">
-  <div class="legend-item">
-    <div class="legend-color" style="background-color: #ddd;"></div>
-    <span>Available</span>
-  </div>
-  <div class="legend-item">
-    <div class="legend-color" style="background-color: #4CAF50;"></div>
-    <span>Selected</span>
-  </div>
-  <div class="legend-item">
-    <div class="legend-color" style="background-color: #ff6b6b;"></div>
-    <span>Booked</span>
-  </div>
-</div>
+  <form id="bookingForm" action="/pay" method="POST">
+    <div class="seats-container">
+      <!-- Dynamically generated seats using JS -->
+    </div>
 
-<div class="seats-container" id="seats-container"></div>
+    <div class="legend">
+      <div><span class="available"></span>Available</div>
+      <div><span class="selected"></span>Selected</div>
+    </div>
 
-<div class="summary">
-  <p>Selected Seats: <span id="selected-count">0</span></p>
-  <p>Available Seats: <span id="available-count">30</span></p>
-  <p>Total Price: ₹<span id="total-price">0</span></p>
-  <button id="pay-button" disabled>Pay Now</button>
-  <div class="loading" id="loading">Processing payment...</div>
-  <div class="error" id="error-message"></div>
-</div>
+    <div class="summary" id="seatSummary">
+      No seats selected.
+    </div>
 
-<script>
-  const seatCount = 30;
-  const seatPrice = 100;
-  let bookedSeats = {{ booked_seats | tojson }};
+    <div class="pay-button">
+      <button type="submit" id="payBtn" disabled>
+        Pay ₹0
+      </button>
+    </div>
+    <input type="hidden" name="selected_seats" id="selectedSeatsInput">
+    <input type="hidden" name="total_amount" id="totalAmountInput">
 
-  const seatContainer = document.getElementById('seats-container');
-  const selectedCountEl = document.getElementById('selected-count');
-  const availableCountEl = document.getElementById('available-count');
-  const totalPriceEl = document.getElementById('total-price');
-  const payButton = document.getElementById('pay-button');
-  const loadingEl = document.getElementById('loading');
-  const errorEl = document.getElementById('error-message');
+  </form>
 
-  let selectedSeats = new Set();
+  <script>
+    const seatLetters = ['A','B','C','D','E','F','G','H','I','J'];
+    const seatsContainer = document.querySelector('.seats-container');
+    const seatSummary = document.getElementById('seatSummary');
+    const payBtn = document.getElementById('payBtn');
+    const seatPrice = 150;
 
-  function showError(message) {
-    errorEl.textContent = message;
-    errorEl.style.display = 'block';
-    setTimeout(() => {
-      errorEl.style.display = 'none';
-    }, 5000);
-  }
-
-  function updateSummary() {
-    selectedCountEl.textContent = selectedSeats.size;
-    availableCountEl.textContent = seatCount - bookedSeats.length;
-    totalPriceEl.textContent = selectedSeats.size * seatPrice;
-    payButton.disabled = selectedSeats.size === 0;
-  }
-
-  function createSeats() {
-    seatContainer.innerHTML = ''; // Clear existing seats
-    
-    for (let i = 1; i <= seatCount; i++) {
-      const seat = document.createElement('div');
-      seat.classList.add('seat');
-      seat.textContent = i;
-      seat.dataset.seatId = i;
-
-      if (bookedSeats.includes(i)) {
-        seat.classList.add('occupied');
-        seat.title = 'This seat is already booked';
-      } else {
-        seat.addEventListener('click', () => {
-          if (selectedSeats.has(i)) {
-            selectedSeats.delete(i);
-            seat.classList.remove('selected');
-          } else {
-            selectedSeats.add(i);
-            seat.classList.add('selected');
-          }
-          updateSummary();
-        });
-        seat.title = 'Click to select this seat';
+    // Generate 10 rows × 4 columns = 40 seats
+    seatLetters.forEach(letter => {
+      for (let i = 1; i <= 4; i++) {
+        const seatId = letter + i;
+        const seatDiv = document.createElement('div');
+        seatDiv.classList.add('seat');
+        seatDiv.innerHTML = `
+          <input type="checkbox" id="${seatId}" name="seats" value="${seatId}">
+          <label for="${seatId}">${seatId}</label>
+        `;
+        seatsContainer.appendChild(seatDiv);
       }
+    });
 
-      seatContainer.appendChild(seat);
-    }
-  }
+    // Handle seat selection
+    document.querySelectorAll('input[name="seats"]').forEach(input => {
+      input.addEventListener('change', () => {
+        const selectedSeats = Array.from(document.querySelectorAll('input[name="seats"]:checked')).map(seat => seat.value);
+        const total = selectedSeats.length * seatPrice;
 
-  async function refreshBookedSeats() {
-    try {
-      const response = await fetch('/get_booked_seats');
-      const data = await response.json();
-      bookedSeats = data.booked_seats || [];
-      
-      // Remove any selected seats that are now booked
-      selectedSeats.forEach(seat => {
-        if (bookedSeats.includes(seat)) {
-          selectedSeats.delete(seat);
+        // Update summary
+        if (selectedSeats.length > 0) {
+          seatSummary.textContent = `Selected Seats: ${selectedSeats.join(', ')} | Total: ₹${total}`;
+          payBtn.disabled = false;
+          payBtn.classList.add('enabled');
+          payBtn.textContent = `Pay ₹${total}`;
+        } else {
+          seatSummary.textContent = 'No seats selected.';
+          payBtn.disabled = true;
+          payBtn.classList.remove('enabled');
+          payBtn.textContent = 'Pay ₹0';
         }
+        document.getElementById("selectedSeatsInput").value = selectedSeats.join(',');
+        document.getElementById("totalAmountInput").value = total;
       });
-      
-      createSeats();
-      updateSummary();
-    } catch (error) {
-      console.error('Error refreshing booked seats:', error);
-    }
-  }
+    });
 
-  payButton.addEventListener('click', async () => {
-    const totalAmount = selectedSeats.size * seatPrice;
-    const selectedArray = Array.from(selectedSeats);
-    
-    console.log("Clicked Pay. Selected Seats:", selectedArray);
-    console.log("Total Amount:", totalAmount);
-    
-    if (selectedArray.length === 0) {
-      showError("Please select at least one seat");
-      return;
-    }
+    // Optional: Handle form submission (simulate payment redirect)
+    document.getElementById('bookingForm').addEventListener('submit', (e) => {
+      const selectedSeats = Array.from(document.querySelectorAll('input[name="seats"]:checked'));
+      if (selectedSeats.length === 0) {
+        e.preventDefault();
+        alert("Please select at least one seat.");
+      }
+    });
+  </script>
 
-    // Show loading state
-    payButton.
+</body>
+</html>
